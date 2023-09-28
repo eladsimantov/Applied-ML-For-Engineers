@@ -1,11 +1,12 @@
 # Neural Networks Course HW and Final Project
-This will include all Homeworks for NN Course 036049, including the final project.
+This repository will include all Homeworks for NN Course 036049, including the final project.
+In addition, we will try to keep relevant lecture and tutorial code here for easy access.
 
 ## Installation
 1. Clone into the project (first download git to your computer) 
-2. Set your username and email by: git config user.name "put_your_name_here", and also git config user.email "put_your_github_email_here"
+2. Set your username and email by: git config user.name "put_your_name_here", and also git config user.email "put_your_github_email_here". 
 3. Build a virtual environment (preferabely venv). To activate it in powershell you may need to run this command in powershell first: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser 
 This command will allow you to simply activate the environment by the command: Activate.ps1
-4. Once you activate the environment you will see an indiction in green, and then run the command: pip install -r requirements.txt 
+4. Once you activate the environment you will see an indiction in green, and then run the command: pip install -r requirements.txt. 
 This will make sure all python libraries needed for this project will be installed here only to make things neat.
 
