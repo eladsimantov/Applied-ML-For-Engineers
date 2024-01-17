@@ -1,2 +1,0 @@
-to convert the notebooks to markdowns simply run:
-jupyter nbconvert --to markdown name_of_notebook.ipynb

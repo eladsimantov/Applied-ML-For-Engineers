@@ -1,0 +1,128 @@
+\section{Prerequisites}\label{prerequisites}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ImportTok{import}\NormalTok{ numpy }\ImportTok{as}\NormalTok{ np}
+\end{Highlighting}
+\end{Shaded}
+
+\paragraph{Question 1 - Dot and Cross}\label{question-1---dot-and-cross}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{u }\OperatorTok{=}\NormalTok{ np.array([}\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{, }\OperatorTok{{-}}\DecValTok{1}\NormalTok{])}
+\NormalTok{v }\OperatorTok{=}\NormalTok{ np.array([}\DecValTok{1}\NormalTok{, }\OperatorTok{{-}}\DecValTok{3}\NormalTok{, }\DecValTok{5}\NormalTok{])}
+\NormalTok{np.dot(u, v)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+-15
+\end{verbatim}
+
+\paragraph{Question 2 - Matrix
+Multiplications}\label{question-2---matrix-multiplications}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{A }\OperatorTok{=}\NormalTok{ np.array([[}\DecValTok{3}\NormalTok{, }\OperatorTok{{-}}\DecValTok{1}\NormalTok{],}
+\NormalTok{              [}\DecValTok{2}\NormalTok{, }\DecValTok{4}\NormalTok{]])}
+\NormalTok{B }\OperatorTok{=}\NormalTok{ np.array([[}\DecValTok{5}\NormalTok{, }\DecValTok{2}\NormalTok{], }
+\NormalTok{              [}\OperatorTok{{-}}\DecValTok{1}\NormalTok{, }\DecValTok{0}\NormalTok{]])}
+\BuiltInTok{print}\NormalTok{(np.matmul(A, B))}
+\BuiltInTok{print}\NormalTok{(}\SpecialStringTok{f\textquotesingle{}}\SpecialCharTok{\{}\NormalTok{np}\SpecialCharTok{.}\NormalTok{linalg}\SpecialCharTok{.}\NormalTok{det(A)}\SpecialCharTok{:.0f\}}\SpecialStringTok{\textquotesingle{}}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+[[16  6]
+ [ 6  4]]
+14
+\end{verbatim}
+
+\paragraph{Question 3 - Probability}\label{question-3---probability}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\BuiltInTok{print}\NormalTok{(}\StringTok{"3 / 6"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+3 / 6
+\end{verbatim}
+
+\paragraph{Question 4 - Probability}\label{question-4---probability}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\BuiltInTok{print}\NormalTok{(}\StringTok{"26 / 26"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+26 / 26
+\end{verbatim}
+
+\paragraph{Question 5 - Prime Numbers}\label{question-5---prime-numbers}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{first\_five\_primes }\OperatorTok{=}\NormalTok{ [}\DecValTok{2}\NormalTok{, }\DecValTok{3}\NormalTok{, }\DecValTok{5}\NormalTok{, }\DecValTok{7}\NormalTok{, }\DecValTok{11}\NormalTok{]}
+\NormalTok{first\_five\_primes}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+[2, 3, 5, 7, 11]
+\end{verbatim}
+
+\paragraph{Question 6 - Even / Odd}\label{question-6---even-odd}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{def}\NormalTok{ is\_even(num: }\BuiltInTok{int}\NormalTok{) }\OperatorTok{{-}\textgreater{}} \BuiltInTok{str}\NormalTok{:}
+    \ControlFlowTok{return} \StringTok{"Odd"} \ControlFlowTok{if}\NormalTok{ num }\OperatorTok{\%} \DecValTok{2} \ControlFlowTok{else} \StringTok{"Even"}
+\end{Highlighting}
+\end{Shaded}
+
+\paragraph{Question 7 - NumPy
+Matrices}\label{question-7---numpy-matrices}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{randarray }\OperatorTok{=}\NormalTok{ np.random.rand(}\DecValTok{3}\NormalTok{, }\DecValTok{3}\NormalTok{)}
+\BuiltInTok{print}\NormalTok{(randarray)}
+\NormalTok{transposed }\OperatorTok{=}\NormalTok{ randarray.T}
+\BuiltInTok{print}\NormalTok{(transposed)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+[[0.61988056 0.08312719 0.49295522]
+ [0.70129885 0.24699207 0.6391238 ]
+ [0.25694693 0.71828367 0.76891171]]
+[[0.61988056 0.70129885 0.25694693]
+ [0.08312719 0.24699207 0.71828367]
+ [0.49295522 0.6391238  0.76891171]]
+\end{verbatim}
+
+\paragraph{Question 8 - Simulation}\label{question-8---simulation}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{theoretical }\OperatorTok{=} \DecValTok{1} \OperatorTok{/} \DecValTok{6}
+\NormalTok{monte }\OperatorTok{=}\NormalTok{ [}\DecValTok{0} \ControlFlowTok{for}\NormalTok{ \_ }\KeywordTok{in} \BuiltInTok{range}\NormalTok{(}\DecValTok{6}\NormalTok{)]}
+\ControlFlowTok{for}\NormalTok{ inx }\KeywordTok{in} \BuiltInTok{range}\NormalTok{(}\DecValTok{100}\NormalTok{):}
+\NormalTok{    carlo }\OperatorTok{=}\NormalTok{ np.random.randint(}\DecValTok{1}\NormalTok{, }\DecValTok{6}\NormalTok{)}
+\NormalTok{    monte[carlo] }\OperatorTok{+=} \DecValTok{1}
+
+\BuiltInTok{print}\NormalTok{(}\SpecialStringTok{f"The simulated value is }\SpecialCharTok{\{}\NormalTok{monte[}\DecValTok{3}\NormalTok{] }\OperatorTok{/} \DecValTok{100}\SpecialCharTok{:.4f\}}\SpecialStringTok{"}\NormalTok{)}
+\BuiltInTok{print}\NormalTok{(}\SpecialStringTok{f"The theoretical value is }\SpecialCharTok{\{}\NormalTok{theoretical}\SpecialCharTok{:.4f\}}\SpecialStringTok{"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{verbatim}
+The simulated value is 0.1900
+The theoretical value is 0.1667
+\end{verbatim}
