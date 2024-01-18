@@ -1,0 +1,40 @@
+Markdown:
+
+# Headers
+## Emphasis
+*italic* or _italic_
+**bold** or __bold__
+
+| Header 1 | Header 2 |
+|----------|----------|
+| Cell 1   | Cell 2   |
+
+$$ E = mc^2 $$
+
+- Unordered List Item 1
+- Unordered List Item 2
+
+1. Ordered List Item 1
+2. Ordered List Item 2
+
+[Link Text](http://example.com)
+
+![Alt Text](path/to/image.jpg)
+
+> This is a blockquote.
+
+Inline `code` or a code block:
+
+
+
+
+Commands:
+
+to convert the notebooks to markdowns simply run:
+jupyter nbconvert --to markdown name_of_notebook.ipynb
+
+to convert the notebook to html run:
+jupyter nbconvert --to html name_of_notebook.ipynb
+
+to convert the notebook to pdf use in cmd:
+pandoc input.ipynb -o output.pdf

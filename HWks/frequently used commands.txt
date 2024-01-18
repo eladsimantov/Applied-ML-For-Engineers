@@ -1,8 +1,0 @@
-to convert the notebooks to markdowns simply run:
-jupyter nbconvert --to markdown name_of_notebook.ipynb
-
-to convert the notebook to html run:
-jupyter nbconvert --to html name_of_notebook.ipynb
-
-to convert markdown to tex use in cmd:
-pandoc input.md -o output.tex
