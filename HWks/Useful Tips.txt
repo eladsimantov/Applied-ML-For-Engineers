@@ -1,4 +1,6 @@
 Markdown:
+Follow this:
+https://www.markdownguide.org/basic-syntax/
 
 # Headers
 ## Emphasis
@@ -19,12 +21,17 @@ $$ E = mc^2 $$
 
 [Link Text](http://example.com)
 
+Add Pictures from assets
 ![Alt Text](path/to/image.jpg)
 
 > This is a blockquote.
 
 Inline `code` or a code block:
 
+Colored text:
+<span style="color:red">
+Text content
+</span>
 
 
 
