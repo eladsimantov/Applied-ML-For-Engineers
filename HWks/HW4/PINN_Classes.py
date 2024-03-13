@@ -26,7 +26,6 @@ class Diffusion_PINNs_1D(nn.Module):
         use_ffm: A bool for deciding to use FFM in input or not.
         diff_coeff: The diffusion coefficient used in the PDE
         """
-
         super().__init__()
         self.diff_coeff = diff_coeff
 
@@ -73,7 +72,7 @@ class Diffusion_PINNs_1D(nn.Module):
         u_x_reshaped = u_x.view(Nx, Nt) # [Nx*Nt, 1] -> [Nx, Nt]
         bc_loss = loss_fun(u_reshaped[0, :], torch.zeros_like(u_reshaped[0,:])) \
                 + loss_fun(u_reshaped[Nx-1, :], torch.zeros_like(u_reshaped[Nx-1,:])) \
-                + loss_fun(u_x_reshaped[0, :], torch.zeros_like(u_x_reshaped[Nx-1,:])) 
+                + loss_fun(u_x_reshaped[0, :], u_x_reshaped[Nx-1,:]) 
         
         # compute the IC loss
         x_reshaped = x.view(Nx, Nt)
@@ -135,8 +134,8 @@ class Allen_Cahn_1D_PINNs(nn.Module):
         # compute the BC loss
         u_reshaped = u.view(Nx, Nt) # [Nx*Nt, 1] -> [Nx, Nt]
         u_x_reshaped = u_x.view(Nx, Nt) # [Nx*Nt, 1] -> [Nx, Nt]
-        bc_loss = loss_fun(u_x_reshaped[0, :], torch.zeros_like(u_x_reshaped[Nx-1,:])) \
-                + loss_fun(u_reshaped[0, :], torch.zeros_like(u_reshaped[Nx-1,:])) 
+        bc_loss = loss_fun(u_x_reshaped[0, :], u_x_reshaped[Nx-1,:]) \
+                + loss_fun(u_reshaped[0, :], u_reshaped[Nx-1,:]) 
         
         # compute the IC loss
         x_reshaped = x.view(Nx, Nt)
