@@ -102,7 +102,6 @@ class Allen_Cahn_1D_PINNs(nn.Module):
                    nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, out_dim)
                    ]
-        print(network)
         
         # define the network using sequential method
         self.u = nn.Sequential(*network) 
