@@ -6,9 +6,9 @@ import numpy as np
 
 
 class ffm(nn.Module):
-    def __init__(self, in_dim, out_dim, std_dev = 2):
+    def __init__(self, in_dim, out_dim, std_dev = 2.0):
         super().__init__()
-        self.omega = nn.Parameter(torch.randn(out_dim, in_dim) * std_dev) # Length of hidden layer is rows, 
+        self.omega = nn.Parameter(torch.randn(out_dim, in_dim) * std_dev) 
 
     def forward(self, x):
         return torch.cos(F.F.linear(x, self.omega))
@@ -103,6 +103,7 @@ class Allen_Cahn_1D_PINNs(nn.Module):
                    nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, out_dim)
                    ]
+        print(network)
         
         # define the network using sequential method
         self.u = nn.Sequential(*network) 
@@ -139,7 +140,8 @@ class Allen_Cahn_1D_PINNs(nn.Module):
         
         # compute the IC loss
         x_reshaped = x.view(Nx, Nt)
-        u_initial = torch.multiply(torch.square((x_reshaped[:,0])), torch.cos(np.pi * x_reshaped[:,0]))
+        u_initial = (x_reshaped[:,0])**2 * torch.cos(np.pi * x_reshaped[:,0])
         ic_loss = loss_fun(u_initial, u_reshaped[:,0])
     
         return pde_loss, bc_loss, ic_loss
+
