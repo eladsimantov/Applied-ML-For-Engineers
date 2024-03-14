@@ -44,28 +44,6 @@ class Membrane_PINNs(nn.Module):
         self.c2 = c**2
         self.R = R
 
-
-    def set_inputs(Nr, Ntheta, Nt, r_final, t_final):
-        r_initial = 0
-        theta_initial, theta_final = 0, 2*np.pi()
-        t_initial = 0
-        dr = (r_final - r_initial) / (Nr-1)
-        dtheta = (theta_final - theta_initial) / (Ntheta-1)
-        dt = (t_final - t_initial) / (Nt-1)
-
-        # initiallize input parameters as tensors
-        r = torch.zeros(Nr, Ntheta, Nt)
-        theta = torch.zeros(Nr, Ntheta, Nt)
-        t = torch.zeros(Nr, Ntheta, Nt)
-        for i in range(Nr):
-            for j in range(Ntheta):
-                for k in range(Nt):
-                    r[i,j,k] = r_initial + dr * i
-                    theta[i,j,k] = theta_initial + dtheta * j
-                    t[i,j,k] = t_initial + dt * k
-        return r, theta, t
-
-
     def forward(self, r, theta, t):
         return self.xi(torch.cat((r, theta, t), 1))
     
@@ -85,12 +63,12 @@ class Membrane_PINNs(nn.Module):
         rxi_rr = grad(rxi_r, r, grad_outputs=torch.ones_like(rxi_r), create_graph=True)[0]
         rxi_rr_over_r = rxi_rr / r
 
-        xi_theta = grad(xi, theta, grad_outputs=torch.ones_like(xi))
-        xi_ttheta = grad(xi_theta, theta, grad_outputs=torch.ones_like(xi_theta))
+        xi_theta = grad(xi, theta, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
+        xi_ttheta = grad(xi_theta, theta, grad_outputs=torch.ones_like(xi_theta), create_graph=True)[0]
         xi_ttheta_over_r2 = xi_ttheta / r*2
 
-        xi_t = grad(xi, t, grad_outputs=torch.ones_like(xi))
-        xi_tt = grad(xi_t, t, grad_outputs=torch.ones_like(xi))
+        xi_t = grad(xi, t, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
+        xi_tt = grad(xi_t, t, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
 
         # set a loss function to apply to each of the physics residuals (PDE, IC, BC)
         loss_fun = nn.MSELoss()
@@ -142,14 +120,12 @@ def main():
     model = Membrane_PINNs()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses_history = np.zeros((num_of_epochs, 4))
-    for epoch in range(num_of_epochs):
 
-        # compute various losses
+    for epoch in range(num_of_epochs):
         eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(-1,1), 
                                                        theta.view(-1,1), 
                                                        t.view(-1,1), 
                                                        Nr, Ntheta, Nt)
-
         # compute total loss
         total_loss = w_eq*eq_loss + w_bc*BC_loss + w_ic*IC_loss
 
@@ -165,7 +141,7 @@ def main():
         optimizer.zero_grad()
 
         # skip by 500 epochs before every print
-        if not epoch%500:
+        if epoch%500 == 0:
             print(f"epoch: {epoch}, loss: {total_loss}")
         
         # plot solutions by the end of [10000, 20000] epochs
@@ -179,6 +155,7 @@ def main():
     plt.title("Losses History")
     plt.legend(["Total Loss", "PDE Loss", "BC Loss", "IC Loss"])
     return
+
 
 if __name__ == "__main__":
     main()
