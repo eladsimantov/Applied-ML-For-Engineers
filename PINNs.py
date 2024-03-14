@@ -44,13 +44,13 @@ class PINN(nn.Module):
         self.domain = domain
         self.function_defined = False
         self.activation_function = activation
-        self.io_structure = [out_dims] + [in_dims for _ in de_order]
+        self.io_structure = [out_dims] + [in_dims for _ in de_order] # the structure for 
 
-        # define the network - start, middle, end
-        start = [ffm(in_dims, HL_dims[0], ffm_std)] if ffm else [nn.Linear(in_dims, HL_dims[0]), activation]
-        middle = [[nn.Linear(HL_dims[_])] + [activation] for _ in range(len(HL_dims))]
-        end = [nn.Linear(HL_dims[-1], out_dims)]
-        self.outputs = nn.Sequential(start + middle + end)
+        # define the network - input, hidden and output layers
+        input_layer = [ffm(in_dims, HL_dims[0], ffm_std)] if ffm else [nn.Linear(in_dims, HL_dims[0]), activation]
+        hidden_layer = [[nn.Linear(HL_dims[_])] + [activation] for _ in range(len(HL_dims))]
+        output_layer = [nn.Linear(HL_dims[-1], out_dims)]
+        self.outputs = nn.Sequential(input_layer + hidden_layer + output_layer)
         return
     
 
@@ -76,7 +76,8 @@ class PINN(nn.Module):
         Y: The outputs of the network - (List of Torch Tensors)
         loss_function: The type of loss function - Set to MSELoss by default
         """
-        parameter_matrix = 
+        #!TODO
+        parameter_matrix = 0
         if self.function_defined:
             return self.f(X)
         raise "Differential Equation Function not defined yet"
@@ -86,11 +87,10 @@ class PINN(nn.Module):
         return
 
 
-obj = PINN(1, 2, np.array([[0, 1][0, 1]]), nn.Tanh(), [64, 128, 64])
 
+obj = PINN(1, 2, np.array([[0, 1][0, 1]]), nn.Tanh(), [64, 128, 64])
 obj.set_differential_equation()
 obj.set_boundary_conditions()
 obj.set_initial_condition()
 obj.train()
 obj.get_loss_history()
-obj.

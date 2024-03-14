@@ -1,8 +1,7 @@
-# Neural Networks Course HW and Final Project
-This repository will include all Homeworks for NN Course 036049, including the final project.
-In addition, we will try to keep relevant lecture and tutorial code here for easy access.
+# Applied ML for Engineers Course - HW and Final Project
+This repository will include all Homeworks for Applied ML Course 036049, including a final project.
 
-## Installation
+#### Installation Notes
 1. Clone into the project (first download git to your computer) 
 2. Set your username and email by: git config user.name "put_your_name_here", and also git config user.email "put_your_github_email_here". 
 3. Build a virtual environment (preferabely venv). To activate it in powershell you may need to run this command in powershell first: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser 
