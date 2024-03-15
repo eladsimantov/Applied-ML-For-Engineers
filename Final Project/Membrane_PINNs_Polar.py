@@ -4,7 +4,8 @@ from torch.autograd import grad
 import torch.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-
+import time
+import os
 
 class ffm(nn.Module):
     def __init__(self, in_dim, out_dim, std_dev = 2.0):
@@ -121,6 +122,8 @@ class Membrane_PINNs(nn.Module):
 
 
 def main():
+    path_current_folder = os.path.dirname(os.path.abspath(__file__))
+
     # Set domain bounds and resolution
     rinitial, rfinal,  = 0.01, 1
     tinitial, tfinal = 0, 10
@@ -128,9 +131,9 @@ def main():
     Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 50
+    num_of_epochs = 2
     lr = 0.001
-    w_eq, w_bc, w_ic = 1, 200, 20
+    w_eq, w_bc, w_ic = 1, 20, 20
 
     # create PINNs model
     model = Membrane_PINNs()
@@ -140,6 +143,7 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses_history = np.zeros((num_of_epochs, 4))
+    start_time = time.time()
 
     for epoch in range(num_of_epochs):
         eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(-1,1), 
@@ -160,15 +164,23 @@ def main():
         optimizer.step()
         optimizer.zero_grad()
 
-        # skip by n epochs before every print
-        if epoch%1 == 0:
+        # skip every 50 epochs before every stat print
+        if epoch%50 == 0 and epoch >= 1:
+            avg_time_per_epoch = (time.time() - start_time) / epoch
             print(f"epoch: {epoch}, loss: {total_loss}")
+            print(f"Estimated time left: {round((num_of_epochs - epoch) * avg_time_per_epoch / 60)} minutes")
+        
+        # Add a stop criteria
+        if total_loss <= 0.1:
+            break
+
         
     # plot loss history
     plt.plot(losses_history)
     plt.title("Losses History")
     plt.legend(["Total Loss", "PDE Loss", "BC Loss", "IC Loss"])
-    plt.show()
+    plt.savefig("/".join([path_current_folder, "outputs", f"Loss after {epoch} epochs"]))
+    # plt.show()
 
     # Create new r theta t vectors for testing and plotting with higher resolution 
     Nr, Ntheta, Nt = 100, 100, 30
@@ -193,7 +205,8 @@ def main():
 
     # Plot the surface.
     ax.plot_surface(X, Y, Z_0, cmap=plt.cm.YlGnBu_r)
-    plt.show()
+    plt.savefig("/".join([path_current_folder, "outputs", f"Initial State"]))
+    # plt.show()
 
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
@@ -201,7 +214,8 @@ def main():
     # Plot the surface.
     ax.plot_surface(X, Y, Z_f, cmap=plt.cm.YlGnBu_r)
     ax.set_title("Membrane state at t-tf")
-    plt.show()
+    plt.savefig("/".join([path_current_folder, "outputs", f"Final State"]))
+    # plt.show()
 
     return
 
