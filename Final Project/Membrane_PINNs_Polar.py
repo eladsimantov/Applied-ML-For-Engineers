@@ -131,7 +131,7 @@ def main():
     Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 2
+    num_of_epochs = 20
     lr = 0.001
     w_eq, w_bc, w_ic = 1, 20, 20
 
@@ -192,8 +192,6 @@ def main():
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
     #!TODO make a visual animated meshgrid for membrane vibrations
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
 
     # Create the mesh in polar coordinates and compute corresponding Z.
     Radius, Angle = np.meshgrid(np.linspace(rinitial, rfinal, Nr), np.linspace(0, 2*np.pi, Ntheta))
@@ -202,20 +200,29 @@ def main():
     X, Y = Radius*np.cos(Angle), Radius*np.sin(Angle)
     Z_0 = xi_reshaped[:,:,0]
     Z_f = xi_reshaped[:,:,-1]
+    Z_mid = xi_reshaped[:,:,Nt//2]
 
-    # Plot the surface.
-    ax.plot_surface(X, Y, Z_0, cmap=plt.cm.YlGnBu_r)
-    plt.savefig("/".join([path_current_folder, "outputs", f"Initial State"]))
-    # plt.show()
+    # Plot the surface at initial state
+    fig_i = plt.figure()
+    ax_i = fig_i.add_subplot(projection='3d')
+    ax_i.plot_surface(X, Y, Z_0, cmap=plt.cm.YlGnBu_r)
+    # fig_i.savefig("/".join([path_current_folder, "outputs", f"Initial State"]))
+    fig_i.show()
 
+    # Plot the surface at middle state
     fig = plt.figure()
     ax = fig.add_subplot(projection='3d')
+    ax.plot_surface(X, Y, Z_mid, cmap=plt.cm.YlGnBu_r)
+    # plt.savefig("/".join([path_current_folder, "outputs", f"Middle State"]))
+    plt.show()
 
-    # Plot the surface.
+    # Plot the surface at Final State
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
     ax.plot_surface(X, Y, Z_f, cmap=plt.cm.YlGnBu_r)
-    ax.set_title("Membrane state at t-tf")
-    plt.savefig("/".join([path_current_folder, "outputs", f"Final State"]))
-    # plt.show()
+    ax.set_title("Membrane state at t=tf")
+    # plt.savefig("/".join([path_current_folder, "outputs", f"Final State"]))
+    plt.show()
 
     return
 
