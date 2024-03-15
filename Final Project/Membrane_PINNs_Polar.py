@@ -16,7 +16,7 @@ class ffm(nn.Module):
 
 
 class Membrane_PINNs(nn.Module):    
-    def __init__(self, in_dim=3, HL_dim=32, out_dim=1, activation=nn.Tanh(), use_ffm=False, R=1, c=1):
+    def __init__(self, in_dim=3, HL_dim=32, out_dim=1, activation=nn.Tanh(), use_ffm=False):
         """
         Parameters
         -------------
@@ -35,14 +35,11 @@ class Membrane_PINNs(nn.Module):
                    nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, HL_dim), activation,
-                   nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, out_dim)
                    ]
         
         # define the network using sequential method
         self.xi = nn.Sequential(*network) 
-        self.c2 = c**2
-        self.R = R
 
     def forward(self, r, theta, t):
         return self.xi(torch.cat((r, theta, t), 1))
@@ -50,18 +47,17 @@ class Membrane_PINNs(nn.Module):
 
     def compute_loss(self, r, theta, t,  Nr, Ntheta, Nt):
         """
-        This is the physics part really
+        This is the physics part
         """
         r.requires_grad=True
         theta.requires_grad=True
         t.requires_grad=True
-        xi = self.xi(torch.cat((r,theta, t), 1))
+        xi = self.xi(torch.cat((r, theta, t), 1))
 
         # compute PDE derivatives using auto grad
         xi_r = grad(xi, r, grad_outputs=torch.ones_like(xi), create_graph=True)[0] # we need to specify the dimension of the output array
-        rxi_r = r * xi_r
-        rxi_rr = grad(rxi_r, r, grad_outputs=torch.ones_like(rxi_r), create_graph=True)[0]
-        rxi_rr_over_r = rxi_rr / r
+        xi_rr = grad(xi_r, r, grad_outputs=torch.ones_like(xi_r), create_graph=True)[0]
+        rxi_rr_over_r = xi_rr + xi_r / r
 
         xi_theta = grad(xi, theta, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
         xi_ttheta = grad(xi_theta, theta, grad_outputs=torch.ones_like(xi_theta), create_graph=True)[0]
@@ -74,7 +70,7 @@ class Membrane_PINNs(nn.Module):
         loss_fun = nn.MSELoss()
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
-        residual = xi_tt - self.c2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
+        residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
         # compute the BC loss - periodic and with a fixed boundary layer
@@ -95,16 +91,17 @@ class Membrane_PINNs(nn.Module):
 
 
 def main():
-    Nr, Ntheta, Nt = 128, 128, 128
-    rfinal, tfinal = 1, 32
-    r_initial, tinitial = 0, 0
-    num_of_epochs = 20000
+    Nr, Ntheta, Nt = 20, 20, 20
+    rfinal, tfinal = 1, 3
+    r_initial, tinitial = 0.01, 0
+    num_of_epochs = 2000
     lr = 0.001
     w_eq, w_bc, w_ic = 1, 20, 20
     theta_initial, theta_final = 0, 2*np.pi
     dr = (rfinal - r_initial) / (Nr-1)
     dtheta = (theta_final - theta_initial) / (Ntheta-1)
     dt = (tfinal - tinitial) / (Nt-1)
+    print("entered main and defined params")
 
     # initiallize input parameters as tensors
     r = torch.zeros(Nr, Ntheta, Nt)
@@ -120,6 +117,7 @@ def main():
     model = Membrane_PINNs()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     losses_history = np.zeros((num_of_epochs, 4))
+    print("initiallized... entering loop")
 
     for epoch in range(num_of_epochs):
         eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(-1,1), 
@@ -141,7 +139,7 @@ def main():
         optimizer.zero_grad()
 
         # skip by 500 epochs before every print
-        if epoch%500 == 0:
+        if epoch%1 == 0:
             print(f"epoch: {epoch}, loss: {total_loss}")
         
         # plot solutions by the end of [10000, 20000] epochs
@@ -154,8 +152,11 @@ def main():
     plt.plot(losses_history)
     plt.title("Losses History")
     plt.legend(["Total Loss", "PDE Loss", "BC Loss", "IC Loss"])
+    plt.show()
     return
 
 
 if __name__ == "__main__":
     main()
+    print("finished running all")
+
