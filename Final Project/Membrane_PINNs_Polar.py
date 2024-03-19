@@ -4,6 +4,10 @@ from torch.autograd import grad
 import torch.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+from torch.special import bessel_j0 as J0
+from scipy.special import jn_zeros
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 import time
 import os
 
@@ -95,8 +99,10 @@ class Membrane_PINNs(nn.Module):
         r_reshaped = r.view(Nr, Ntheta, Nt)
         theta_reshaped = theta.view(Nr, Ntheta, Nt)
         
-        #!TODO set proper IC
-        xi_initial = torch.cos(2 * np.pi * r_reshaped[:,:,0]) # TBD
+        # set an IC for the first mode of vibration
+        a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
+        xi_initial = 0.005 * J0(r_reshaped[:,:,0] * a_01)
+        # xi_initial = torch.cos(2 * np.pi * r_reshaped[:,:,0]) 
         ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
     
         return pde_loss, bc_loss, ic_loss
@@ -116,7 +122,7 @@ class Membrane_PINNs(nn.Module):
                     r[i,j,k] = r_i + dr * i
                     theta[i,j,k] = theta_i + dtheta * j
                     t[i,j,k] = t_i + dt * k
-        print("Done!")
+        print("Done creating input tensors")
         return r, theta, t
 
 
@@ -125,18 +131,18 @@ def main():
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
 
     # Set domain bounds and resolution
-    rinitial, rfinal,  = 0.01, 1
+    rinitial, rfinal,  = 0.1, 1
     tinitial, tfinal = 0, 10
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 30, 30, 30
+    Nr, Ntheta, Nt = 20, 20, 20
     
     # Set hyperparams
-    num_of_epochs = 20
+    num_of_epochs = 50
     lr = 0.001
     w_eq, w_bc, w_ic = 1, 20, 20
 
     # create PINNs model
-    model = Membrane_PINNs()
+    model = Membrane_PINNs(HL_dim=20)
 
     # initiallize input parameters as tensors
     r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
@@ -164,14 +170,15 @@ def main():
         optimizer.step()
         optimizer.zero_grad()
 
-        # skip every 50 epochs before every stat print
-        if epoch%50 == 0 and epoch >= 1:
+        # skip every 20 epochs before every stat print
+        if epoch%20 == 0 and epoch >= 1:
             avg_time_per_epoch = (time.time() - start_time) / epoch
-            print(f"epoch: {epoch}, loss: {total_loss}")
-            print(f"Estimated time left: {round((num_of_epochs - epoch) * avg_time_per_epoch / 60)} minutes")
+            print(f"epoch: {epoch}, loss: {total_loss:.8f}, Estimated time left: {round((num_of_epochs - epoch) * avg_time_per_epoch / 60)} minutes and {(((num_of_epochs - epoch) * avg_time_per_epoch) % 60):.0f} seconds")
         
         # Add a stop criteria
-        if total_loss <= 0.1:
+        if total_loss <= 0.00000001:
+            print(f"epoch: {epoch}, loss: {total_loss:.8f}")
+            print("Reached stop criterion")
             break
 
         
@@ -179,12 +186,13 @@ def main():
     plt.plot(losses_history)
     plt.title("Losses History")
     plt.legend(["Total Loss", "PDE Loss", "BC Loss", "IC Loss"])
-    plt.savefig("/".join([path_current_folder, "outputs", f"Loss after {epoch} epochs"]))
+    plt.grid(visible=True)
+    plt.savefig("/".join([path_current_folder, "outputs", f"Loss after {epoch+1} epochs"]))
     # plt.show()
 
-    # Create new r theta t vectors for testing and plotting with higher resolution 
-    Nr, Ntheta, Nt = 100, 100, 30
-    r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
+    # # Create new r theta t vectors for testing and plotting with higher resolution 
+    # Nr, Ntheta, Nt = 100, 100, 30
+    # r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
 
     # Test the PINNs
     xi = model.forward(r.view(-1,1), theta.view(-1,1), t.view(-1,1)) # convert tensors into column vectors
@@ -192,39 +200,52 @@ def main():
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
     #!TODO make a visual animated meshgrid for membrane vibrations
-
+    
     # Create the mesh in polar coordinates and compute corresponding Z.
     Radius, Angle = np.meshgrid(np.linspace(rinitial, rfinal, Nr), np.linspace(0, 2*np.pi, Ntheta))
 
     # Express the mesh in the cartesian system.
     X, Y = Radius*np.cos(Angle), Radius*np.sin(Angle)
-    Z_0 = xi_reshaped[:,:,0]
-    Z_f = xi_reshaped[:,:,-1]
-    Z_mid = xi_reshaped[:,:,Nt//2]
+    
+    # ----------------------------- #
 
-    # Plot the surface at initial state
-    fig_i = plt.figure()
-    ax_i = fig_i.add_subplot(projection='3d')
-    ax_i.plot_surface(X, Y, Z_0, cmap=plt.cm.YlGnBu_r)
-    # fig_i.savefig("/".join([path_current_folder, "outputs", f"Initial State"]))
-    fig_i.show()
-
-    # Plot the surface at middle state
+    # Prepare plot
     fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.plot_surface(X, Y, Z_mid, cmap=plt.cm.YlGnBu_r)
-    # plt.savefig("/".join([path_current_folder, "outputs", f"Middle State"]))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Initialize animation frame
+    def init():
+        ax.clear()
+        ax.set_xlim([X.min(), X.max()])
+        ax.set_ylim([Y.min(), Y.max()])
+        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
+
+    # Update function for animation
+    def update(frame):
+        Z = xi_reshaped[:,:,frame]
+        ax.clear()
+        ax.plot_surface(X, Y, Z, cmap='viridis')
+        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
+        return fig
+
+    # Create animation
+    ani = FuncAnimation(fig, update, frames=Nt, init_func=init, blit=False)
     plt.show()
 
-    # Plot the surface at Final State
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-    ax.plot_surface(X, Y, Z_f, cmap=plt.cm.YlGnBu_r)
-    ax.set_title("Membrane state at t=tf")
-    # plt.savefig("/".join([path_current_folder, "outputs", f"Final State"]))
-    plt.show()
+    # ---------------------- #
 
+    # # Plot the surface at all Nt states 
+    # for timestep in range(Nt):    
+    #     Z = xi_reshaped[:,:,timestep]
+    #     fig = plt.figure()
+    #     ax = fig.add_subplot(projection='3d')
+    #     ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
+    #     ax.set_zlim([-0.02, 0.02])
+    #     plt.savefig("/".join([path_current_folder, "outputs", f"timestep {timestep}"]))
+    #     # plt.show()
+    #     plt.close()
     return
+    
 
 
 if __name__ == "__main__":

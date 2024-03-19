@@ -40,11 +40,12 @@ def update(frame):
     z = xi_function(r, theta, t)
     ax.clear()
     ax.plot_surface(x, y, z, cmap='viridis')
+    ax.set_zlim([-1, 1])  # Adjust based on your function's range
     return fig
 
 # Create animation
 ani = FuncAnimation(fig, update, frames=Nt, init_func=init, blit=False)
 plt.show()
-# Save animation
-# ani.save('xi_animation.mp4', writer='ffmpeg', fps=10)
 
+# Save animation
+# ani.save( ... )
