@@ -176,7 +176,7 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
             Z = xi[:,:,timestep]
             fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
-            ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
+            ax.plot_surface(X, Y, Z, cmap='viridis')
             ax.set_zlim(zlims)
             plt.savefig("/".join([path_to_folder, "outputs", animation_id, f"timestep {timestep}"]))
             plt.close()
