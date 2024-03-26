@@ -51,7 +51,7 @@ class Membrane_PINNs(nn.Module):
         return self.xi(torch.cat((r, theta, t), 1))
     
 
-    def compute_loss(self, r, theta, t,  Nr, Ntheta, Nt):
+    def compute_loss(self, r, theta, t,  Nr, Ntheta, Nt, r_f):
         """
         This is the physics part
         """
@@ -76,7 +76,7 @@ class Membrane_PINNs(nn.Module):
         loss_fun = nn.MSELoss()
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
-        residual = xi_tt - 5**2 * (rxi_rr_over_r) # case axissymetric
+        residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
         # residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
@@ -90,9 +90,9 @@ class Membrane_PINNs(nn.Module):
         # 2. xi_theta at theta=0 and theta=2pi are equal
         # 3. xi are r=R is zero
         # 4. xi_r at r->0 is zero
-        bc_loss = 10000 * loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
+        bc_loss = loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
                 + loss_fun(xi_theta_reshaped[:,0,:], xi_theta_reshaped[:,Ntheta-1,:]) \
-                + 10000 * loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
+                + loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
                 # + loss_fun(xi_r_reshaped[0,:,:], torch.zeros_like(xi_r_reshaped[0,:,:])) \
         
         # compute the IC loss
@@ -101,8 +101,8 @@ class Membrane_PINNs(nn.Module):
         
         # set an IC for the first mode of vibration
         a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
-        xi_initial = 0.05 * J0(r_reshaped[:,:,0] * a_01)
-        ic_loss = 10000 * loss_fun(xi_initial, xi_reshaped[:,:,0])
+        xi_initial = 0.05 * J0(r_reshaped[:,:,0] * a_01 / r_f)
+        ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
     
         return pde_loss, bc_loss, ic_loss
     
@@ -188,18 +188,18 @@ def main():
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
 
     # Set domain bounds and resolution
-    rinitial, rfinal,  = 0.1, 1
+    rinitial, rfinal,  = 0.01, 5
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 30, 30, 30
+    Nr, Ntheta, Nt = 20, 20, 20
     
     # Set hyperparams
-    num_of_epochs = 1
-    lr = 0.01
+    num_of_epochs = 500
+    lr = 0.001
     w_eq, w_bc, w_ic = 5, 20, 20
 
     # create PINNs model
-    model = Membrane_PINNs(HL_dim=20)
+    model = Membrane_PINNs(HL_dim=5)
 
     # initiallize input parameters as tensors
     r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
@@ -212,7 +212,8 @@ def main():
         eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(Nr*Ntheta*Nt,1), 
                                                        theta.view(Nr*Ntheta*Nt,1), 
                                                        t.view(Nr*Ntheta*Nt,1), 
-                                                       Nr, Ntheta, Nt)
+                                                       Nr, Ntheta, Nt,
+                                                       r_f=rfinal)
         # compute total loss
         total_loss = w_eq*eq_loss + w_bc*BC_loss + w_ic*IC_loss
 
@@ -230,7 +231,15 @@ def main():
         # skip every 20 epochs before every stat print
         if epoch%20 == 0 and epoch >= 1:
             avg_time_per_epoch = (time.time() - start_time) / epoch
-            print(f"epoch: {epoch}, loss: {total_loss:.8f}, Estimated time left: {round((num_of_epochs - epoch) * avg_time_per_epoch / 60)} minutes and {(((num_of_epochs - epoch) * avg_time_per_epoch) % 60):.0f} seconds")
+            stats = {"EQ_loss": float(eq_loss),
+                     "BC_loss": float(BC_loss),
+                     "IC_loss": float(IC_loss),
+                     "Total_loss": float(total_loss)}
+            minutes_left = round((num_of_epochs - epoch) * avg_time_per_epoch / 60)
+            seconds_left = (((num_of_epochs - epoch) * avg_time_per_epoch) % 60)
+            losses_msg = ", ".join([str(key) + ": " + f"{value:.8f}" for (key, value) in stats.items()])
+            time_stats_msg = f", Estimated time left: {minutes_left} min {seconds_left:.0f} sec"
+            print(f"epoch: {epoch}, " + losses_msg + time_stats_msg)
         
         # Add a stop criteria
         if total_loss <= 0.00000001:
@@ -252,7 +261,7 @@ def main():
     xi_np = xi.detach().numpy() # convert xi into a np array
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
-    xi_reshaped[Nr-1,:,:] = 0 # force BC to zero after the solution is computed
+    # xi_reshaped[Nr-1,:,:] = 0 # force BC to zero after the solution is computed
 
     animate_solution(path_to_folder=path_current_folder, n_epochs=num_of_epochs,
                      xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
