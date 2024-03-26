@@ -90,9 +90,9 @@ class Membrane_PINNs(nn.Module):
         # 2. xi_theta at theta=0 and theta=2pi are equal
         # 3. xi are r=R is zero
         # 4. xi_r at r->0 is zero
-        bc_loss = 1000 * loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
+        bc_loss = 10000 * loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
                 + loss_fun(xi_theta_reshaped[:,0,:], xi_theta_reshaped[:,Ntheta-1,:]) \
-                + 1000 * loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
+                + 10000 * loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
                 # + loss_fun(xi_r_reshaped[0,:,:], torch.zeros_like(xi_r_reshaped[0,:,:])) \
         
         # compute the IC loss
@@ -102,7 +102,7 @@ class Membrane_PINNs(nn.Module):
         # set an IC for the first mode of vibration
         a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
         xi_initial = 0.05 * J0(r_reshaped[:,:,0] * a_01)
-        ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
+        ic_loss = 10000 * loss_fun(xi_initial, xi_reshaped[:,:,0])
     
         return pde_loss, bc_loss, ic_loss
     
@@ -157,16 +157,20 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
         ax.set_zlim(zlims)
         return fig
 
-    # Create animation
+    # Create and save animation
     time_str = time.strftime("%H_%M_%S", time.localtime())
     ani = FuncAnimation(fig, update, frames=Nt, init_func=init, blit=False)
     plt.show()
-    ani.save("/".join([path_to_folder, "outputs", f"animation_{time_str}_time_{n_epochs}_epochs_{Nt}_timesteps.gif"])) 
+    animation_id = f"{time_str}_time_{n_epochs}_epochs_{Nt}_timesteps"
+    ani.save("/".join([path_to_folder, "outputs", animation_id + ".gif"])) 
     plt.close()
 
     # ---------------------- #
 
     if save_timesteps:
+        # create a directory for the animation timesteps
+        os.makedirs("/".join([path_to_folder, "outputs", animation_id]))
+
         # Plot the surface at all Nt states and save pictures.
         for timestep in range(Nt):
             Z = xi[:,:,timestep]
@@ -174,13 +178,14 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
             ax = fig.add_subplot(projection='3d')
             ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
             ax.set_zlim(zlims)
-            plt.savefig("/".join([path_to_folder, "outputs", f"timestep {timestep}"]))
+            plt.savefig("/".join([path_to_folder, "outputs", animation_id, f"timestep {timestep}"]))
             plt.close()
     return
 
     
 def main():
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
 
     # Set domain bounds and resolution
     rinitial, rfinal,  = 0.1, 1
@@ -189,7 +194,7 @@ def main():
     Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 100
+    num_of_epochs = 1
     lr = 0.01
     w_eq, w_bc, w_ic = 5, 20, 20
 
@@ -247,10 +252,16 @@ def main():
     xi_np = xi.detach().numpy() # convert xi into a np array
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
+    xi_reshaped[Nr-1,:,:] = 0 # force BC to zero after the solution is computed
+
     animate_solution(path_to_folder=path_current_folder, n_epochs=num_of_epochs,
                      xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
                      r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
-                     t_f=tfinal, t_i=tinitial)
+                     t_f=tfinal, t_i=tinitial, 
+                     zlims=[-0.05, 0.05])
+    
+    # Save the PINNs model for future use
+    torch.save(model.state_dict(), "/".join([path_current_folder, "saved_model_parameters.pth"]))
     return
     
 
