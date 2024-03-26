@@ -35,7 +35,7 @@ class Membrane_PINNs(nn.Module):
         super().__init__()
 
         # define the network architecture
-        network = [ffm(in_dim, HL_dim)] if use_ffm else [nn.Linear(in_dim, HL_dim)]
+        network = [ffm(in_dim, HL_dim)] if use_ffm else [nn.Linear(in_dim, HL_dim), activation]
         network += [
                    nn.Linear(HL_dim, HL_dim), activation,
                    nn.Linear(HL_dim, HL_dim), activation,
@@ -67,16 +67,16 @@ class Membrane_PINNs(nn.Module):
 
         xi_theta = grad(xi, theta, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
         xi_ttheta = grad(xi_theta, theta, grad_outputs=torch.ones_like(xi_theta), create_graph=True)[0]
-        xi_ttheta_over_r2 = xi_ttheta / r*2
+        xi_ttheta_over_r2 = xi_ttheta / r**2
 
         xi_t = grad(xi, t, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
-        xi_tt = grad(xi_t, t, grad_outputs=torch.ones_like(xi), create_graph=True)[0]
+        xi_tt = grad(xi_t, t, grad_outputs=torch.ones_like(xi_t), create_graph=True)[0]
 
         # set a loss function to apply to each of the physics residuals (PDE, IC, BC)
         loss_fun = nn.MSELoss()
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
-        residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
+        residual = xi_tt - 10**2 * (rxi_rr_over_r) # case axissymetric
         # residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
@@ -90,10 +90,10 @@ class Membrane_PINNs(nn.Module):
         # 2. xi_theta at theta=0 and theta=2pi are equal
         # 3. xi are r=R is zero
         # 4. xi_r at r->0 is zero
-        bc_loss = loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
-                + loss_fun(xi_r_reshaped[0,:,:], torch.zeros_like(xi_r_reshaped[0,:,:])) \
-                + loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
-                + loss_fun(xi_theta_reshaped[:,0,:], xi_theta_reshaped[:,Ntheta-1,:]) 
+        bc_loss = 1000 * loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
+                + loss_fun(xi_theta_reshaped[:,0,:], xi_theta_reshaped[:,Ntheta-1,:]) \
+                + 1000 * loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
+                # + loss_fun(xi_r_reshaped[0,:,:], torch.zeros_like(xi_r_reshaped[0,:,:])) \
         
         # compute the IC loss
         r_reshaped = r.view(Nr, Ntheta, Nt)
@@ -101,7 +101,7 @@ class Membrane_PINNs(nn.Module):
         
         # set an IC for the first mode of vibration
         a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
-        xi_initial = 0.005 * J0(r_reshaped[:,:,0] * a_01)
+        xi_initial = 0.5 * J0(r_reshaped[:,:,0] * a_01)
         # xi_initial = torch.cos(2 * np.pi * r_reshaped[:,:,0]) 
         ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
     
@@ -127,19 +127,72 @@ class Membrane_PINNs(nn.Module):
 
 
 
+def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, Nr, Ntheta, Nt, n_epochs):
+    """
+    This function will convert the solution from xi as function of r theta and t to a 3d representation.
+    It will create and save an animation of the displacement of the membrane in time along with all the timesteps pictures.
+    """
+               
+    # Create the mesh in polar coordinates and compute corresponding Z.
+    Radius, Angle = np.meshgrid(np.linspace(r_i, r_f, Nr), 
+                                np.linspace(0, 2*np.pi, Ntheta), 
+                                indexing='ij') # The indexing 'ij' was nasty. It makes sure the plotting is by the Z indexes. 
+    X, Y = Radius*np.cos(Angle), Radius*np.sin(Angle)
+    
+    # Prepare plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Initialize animation frame
+    def init():
+        ax.clear()
+        ax.set_xlim([X.min(), X.max()])
+        ax.set_ylim([Y.min(), Y.max()])
+        ax.set_zlim([-0.1, 0.1])  # Adjust based on your function's range
+
+    # Update function for animation
+    def update(frame):
+        Z = xi[:,:,frame]
+        ax.clear()
+        ax.plot_surface(X, Y, Z, cmap='viridis')
+        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
+        return fig
+
+    # Create animation
+    time_str = time.strftime("%H_%M_%S", time.localtime())
+    ani = FuncAnimation(fig, update, frames=Nt, init_func=init, blit=False)
+    plt.show()
+    ani.save("/".join([path_to_folder, "outputs", f"animation_{time_str}_time_{n_epochs}_epochs_{Nt}_timesteps.gif"])) 
+    plt.close()
+
+    # ---------------------- #
+
+    # Plot the surface at all Nt states and save pictures.
+    for timestep in range(Nt):
+        Z = xi[:,:,timestep]
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
+        ax.set_zlim([-0.02, 0.02])
+        plt.savefig("/".join([path_to_folder, "outputs", f"timestep {timestep}"]))
+        plt.close()
+    return
+
+    
+
 def main():
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
 
     # Set domain bounds and resolution
     rinitial, rfinal,  = 0.1, 1
-    tinitial, tfinal = 0, 10
+    tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
     Nr, Ntheta, Nt = 20, 20, 20
     
     # Set hyperparams
-    num_of_epochs = 50
-    lr = 0.001
-    w_eq, w_bc, w_ic = 1, 20, 20
+    num_of_epochs = 30
+    lr = 0.01
+    w_eq, w_bc, w_ic = 5, 20, 20
 
     # create PINNs model
     model = Membrane_PINNs(HL_dim=20)
@@ -152,9 +205,9 @@ def main():
     start_time = time.time()
 
     for epoch in range(num_of_epochs):
-        eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(-1,1), 
-                                                       theta.view(-1,1), 
-                                                       t.view(-1,1), 
+        eq_loss, BC_loss, IC_loss = model.compute_loss(r.view(Nr*Ntheta*Nt,1), 
+                                                       theta.view(Nr*Ntheta*Nt,1), 
+                                                       t.view(Nr*Ntheta*Nt,1), 
                                                        Nr, Ntheta, Nt)
         # compute total loss
         total_loss = w_eq*eq_loss + w_bc*BC_loss + w_ic*IC_loss
@@ -188,9 +241,9 @@ def main():
     plt.legend(["Total Loss", "PDE Loss", "BC Loss", "IC Loss"])
     plt.grid(visible=True)
     plt.savefig("/".join([path_current_folder, "outputs", f"Loss after {epoch+1} epochs"]))
-    # plt.show()
+    plt.close()
 
-    # # Create new r theta t vectors for testing and plotting with higher resolution 
+    # Create new r theta t vectors for testing and plotting with higher resolution 
     # Nr, Ntheta, Nt = 100, 100, 30
     # r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
 
@@ -199,51 +252,13 @@ def main():
     xi_np = xi.detach().numpy() # convert xi into a np array
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
-    #!TODO make a visual animated meshgrid for membrane vibrations
-    
-    # Create the mesh in polar coordinates and compute corresponding Z.
-    Radius, Angle = np.meshgrid(np.linspace(rinitial, rfinal, Nr), np.linspace(0, 2*np.pi, Ntheta))
+    # xi_reshaped[Nr-1,:,:] = 0 # force solution to fixed BC
+    # plt.imshow(xi_reshaped[:,:,0], cmap='jet', origin='lower') # this shows that the solution is fine and the problem is only with plottings.
 
-    # Express the mesh in the cartesian system.
-    X, Y = Radius*np.cos(Angle), Radius*np.sin(Angle)
-    
-    # ----------------------------- #
-
-    # Prepare plot
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    # Initialize animation frame
-    def init():
-        ax.clear()
-        ax.set_xlim([X.min(), X.max()])
-        ax.set_ylim([Y.min(), Y.max()])
-        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
-
-    # Update function for animation
-    def update(frame):
-        Z = xi_reshaped[:,:,frame]
-        ax.clear()
-        ax.plot_surface(X, Y, Z, cmap='viridis')
-        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
-        return fig
-
-    # Create animation
-    ani = FuncAnimation(fig, update, frames=Nt, init_func=init, blit=False)
-    plt.show()
-
-    # ---------------------- #
-
-    # # Plot the surface at all Nt states 
-    # for timestep in range(Nt):    
-    #     Z = xi_reshaped[:,:,timestep]
-    #     fig = plt.figure()
-    #     ax = fig.add_subplot(projection='3d')
-    #     ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
-    #     ax.set_zlim([-0.02, 0.02])
-    #     plt.savefig("/".join([path_current_folder, "outputs", f"timestep {timestep}"]))
-    #     # plt.show()
-    #     plt.close()
+    animate_solution(path_to_folder=path_current_folder, n_epochs=num_of_epochs,
+                     xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
+                     r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
+                     t_f=tfinal, t_i=tinitial)
     return
     
 
