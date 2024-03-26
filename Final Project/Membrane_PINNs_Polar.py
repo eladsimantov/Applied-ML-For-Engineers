@@ -102,7 +102,6 @@ class Membrane_PINNs(nn.Module):
         # set an IC for the first mode of vibration
         a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
         xi_initial = 0.5 * J0(r_reshaped[:,:,0] * a_01)
-        # xi_initial = torch.cos(2 * np.pi * r_reshaped[:,:,0]) 
         ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
     
         return pde_loss, bc_loss, ic_loss
@@ -127,7 +126,7 @@ class Membrane_PINNs(nn.Module):
 
 
 
-def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, Nr, Ntheta, Nt, n_epochs):
+def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, Nr, Ntheta, Nt, n_epochs, save_timesteps=False):
     """
     This function will convert the solution from xi as function of r theta and t to a 3d representation.
     It will create and save an animation of the displacement of the membrane in time along with all the timesteps pictures.
@@ -148,14 +147,14 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
         ax.clear()
         ax.set_xlim([X.min(), X.max()])
         ax.set_ylim([Y.min(), Y.max()])
-        ax.set_zlim([-0.1, 0.1])  # Adjust based on your function's range
+        ax.set_zlim([-0.1, 0.1])
 
     # Update function for animation
     def update(frame):
-        Z = xi[:,:,frame]
+        Z = xi[:,:,frame] # because we used indexing 'ij' instead of 'xy' in the meshgrid this should work.
         ax.clear()
         ax.plot_surface(X, Y, Z, cmap='viridis')
-        ax.set_zlim([-0.02, 0.02])  # Adjust based on your function's range
+        ax.set_zlim([-0.1, 0.1])
         return fig
 
     # Create animation
@@ -167,19 +166,19 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
 
     # ---------------------- #
 
-    # Plot the surface at all Nt states and save pictures.
-    for timestep in range(Nt):
-        Z = xi[:,:,timestep]
-        fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-        ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
-        ax.set_zlim([-0.02, 0.02])
-        plt.savefig("/".join([path_to_folder, "outputs", f"timestep {timestep}"]))
-        plt.close()
+    if save_timesteps:
+        # Plot the surface at all Nt states and save pictures.
+        for timestep in range(Nt):
+            Z = xi[:,:,timestep]
+            fig = plt.figure()
+            ax = fig.add_subplot(projection='3d')
+            ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
+            ax.set_zlim([-0.1, 0.1])
+            plt.savefig("/".join([path_to_folder, "outputs", f"timestep {timestep}"]))
+            plt.close()
     return
 
     
-
 def main():
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
 
@@ -187,11 +186,11 @@ def main():
     rinitial, rfinal,  = 0.1, 1
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 20, 20, 20
+    Nr, Ntheta, Nt = 90, 90, 90
     
     # Set hyperparams
-    num_of_epochs = 30
-    lr = 0.01
+    num_of_epochs = 1000
+    lr = 0.001
     w_eq, w_bc, w_ic = 5, 20, 20
 
     # create PINNs model
@@ -243,17 +242,10 @@ def main():
     plt.savefig("/".join([path_current_folder, "outputs", f"Loss after {epoch+1} epochs"]))
     plt.close()
 
-    # Create new r theta t vectors for testing and plotting with higher resolution 
-    # Nr, Ntheta, Nt = 100, 100, 30
-    # r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
-
     # Test the PINNs
     xi = model.forward(r.view(-1,1), theta.view(-1,1), t.view(-1,1)) # convert tensors into column vectors
     xi_np = xi.detach().numpy() # convert xi into a np array
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
-
-    # xi_reshaped[Nr-1,:,:] = 0 # force solution to fixed BC
-    # plt.imshow(xi_reshaped[:,:,0], cmap='jet', origin='lower') # this shows that the solution is fine and the problem is only with plottings.
 
     animate_solution(path_to_folder=path_current_folder, n_epochs=num_of_epochs,
                      xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
