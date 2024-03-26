@@ -76,7 +76,7 @@ class Membrane_PINNs(nn.Module):
         loss_fun = nn.MSELoss()
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
-        residual = xi_tt - 10**2 * (rxi_rr_over_r) # case axissymetric
+        residual = xi_tt - 5**2 * (rxi_rr_over_r) # case axissymetric
         # residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
@@ -101,7 +101,7 @@ class Membrane_PINNs(nn.Module):
         
         # set an IC for the first mode of vibration
         a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
-        xi_initial = 0.5 * J0(r_reshaped[:,:,0] * a_01)
+        xi_initial = 0.05 * J0(r_reshaped[:,:,0] * a_01)
         ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
     
         return pde_loss, bc_loss, ic_loss
@@ -126,7 +126,7 @@ class Membrane_PINNs(nn.Module):
 
 
 
-def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, Nr, Ntheta, Nt, n_epochs, save_timesteps=False):
+def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, Nr, Ntheta, Nt, n_epochs, save_timesteps=False, zlims=[-0.005, 0.005]):
     """
     This function will convert the solution from xi as function of r theta and t to a 3d representation.
     It will create and save an animation of the displacement of the membrane in time along with all the timesteps pictures.
@@ -147,14 +147,14 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
         ax.clear()
         ax.set_xlim([X.min(), X.max()])
         ax.set_ylim([Y.min(), Y.max()])
-        ax.set_zlim([-0.1, 0.1])
+        ax.set_zlim(zlims)
 
     # Update function for animation
     def update(frame):
         Z = xi[:,:,frame] # because we used indexing 'ij' instead of 'xy' in the meshgrid this should work.
         ax.clear()
         ax.plot_surface(X, Y, Z, cmap='viridis')
-        ax.set_zlim([-0.1, 0.1])
+        ax.set_zlim(zlims)
         return fig
 
     # Create animation
@@ -173,7 +173,7 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
             fig = plt.figure()
             ax = fig.add_subplot(projection='3d')
             ax.plot_surface(X, Y, Z, cmap=plt.cm.YlGnBu_r)
-            ax.set_zlim([-0.1, 0.1])
+            ax.set_zlim(zlims)
             plt.savefig("/".join([path_to_folder, "outputs", f"timestep {timestep}"]))
             plt.close()
     return
@@ -186,11 +186,11 @@ def main():
     rinitial, rfinal,  = 0.1, 1
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 90, 90, 90
+    Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 1000
-    lr = 0.001
+    num_of_epochs = 100
+    lr = 0.01
     w_eq, w_bc, w_ic = 5, 20, 20
 
     # create PINNs model
