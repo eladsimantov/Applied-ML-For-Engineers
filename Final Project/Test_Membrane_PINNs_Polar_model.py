@@ -16,7 +16,7 @@ def main():
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
 
     # recreate the model using trained parameters from file
-    model = Membrane_PINNs(HL_dim=5)
+    model = Membrane_PINNs(HL_dim=32)
     model.load_state_dict(torch.load(path_model_parameters))
     model.eval()
 
@@ -24,7 +24,7 @@ def main():
     rinitial, rfinal,  = 0.01, 5
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 20, 20, 20
+    Nr, Ntheta, Nt = 30, 30, 30
     r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
 
     # compute output 

@@ -191,15 +191,15 @@ def main():
     rinitial, rfinal,  = 0.01, 5
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 20, 20, 20
+    Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 500
+    num_of_epochs = 20000
     lr = 0.001
-    w_eq, w_bc, w_ic = 5, 20, 20
+    w_eq, w_bc, w_ic = 1, 20, 20
 
     # create PINNs model
-    model = Membrane_PINNs(HL_dim=5)
+    model = Membrane_PINNs(HL_dim=32)
 
     # initiallize input parameters as tensors
     r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
@@ -245,7 +245,14 @@ def main():
         if total_loss <= 0.00000001:
             print(f"epoch: {epoch}, loss: {total_loss:.8f}")
             print("Reached stop criterion")
+            # Save the PINNs model for future use every 5000 epochs
+            torch.save(model.state_dict(), "/".join([path_current_folder, f"saved_model_parameters_{epoch}_epochs.pth"]))
             break
+
+        if epoch%5000 == 0:
+            # Save the PINNs model for future use every 5000 epochs
+            torch.save(model.state_dict(), "/".join([path_current_folder, f"saved_model_parameters_{epoch}_epochs.pth"]))
+
 
         
     # plot loss history
