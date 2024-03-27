@@ -1,6 +1,6 @@
 """
-This script is to test a saved model of type Membrane Pinns. 
-It assumes it is already trained and plots the outputs
+This script is to retrain a saved model of type Membrane Pinns. 
+It assumes it is has been saved, it continues to train and plots the outputs
 """
 import torch
 from Membrane_PINNs_Polar import Membrane_PINNs
@@ -13,7 +13,7 @@ import os
 def main():
     # Paths housekeeping - ENTER THE SAVED MODEL FILE TO LOAD
     model_filename_to_test = "\saved_models\scenario_13_17_42\checkpoint_300_epochs.pth"
-
+    scenraio_id_folder = "\scenario_13_17_42"
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
     path_model_parameters = "/".join([path_current_folder, model_filename_to_test])
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
@@ -58,6 +58,17 @@ def main():
         optimizer.step()
         optimizer.zero_grad()
 
+        if epoch%5000 == 0:
+            # Save the PINNs model for future use every 5000 epochs (checkpoints)
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': total_loss
+            }, "/".join([path_current_folder, 
+                         "saved_models", 
+                         scenraio_id_folder, 
+                         f"checkpoint_{epoch}_epochs.pth"]))
         # skip every 20 epochs before every stat print
         if epoch%20 == 0 and epoch >= 1:
             avg_time_per_epoch = (time.time() - start_time) / epoch
