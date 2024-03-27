@@ -30,7 +30,6 @@ class Membrane_PINNs(nn.Module):
         out_dim: the output dimensions - number of dependant variables
         activation: The activation function you wish to use in the network - the default is nn.Tanh()
         use_ffm: A bool for deciding to use FFM in input or not.
-        diff_coeff: The diffusion coefficient used in the PDE
         """
         super().__init__()
 
@@ -184,8 +183,11 @@ def animate_solution(path_to_folder, xi, r_i, r_f, theta_i, theta_f, t_i, t_f, N
 
     
 def main():
+    scenraio_id_folder = "scenario_" + time.strftime("%H_%M_%S", time.localtime())
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
+    os.makedirs("/".join([path_current_folder, "saved_models", 
+                          scenraio_id_folder]), exist_ok=True)
 
     # Set domain bounds and resolution
     rinitial, rfinal,  = 0.01, 5
@@ -242,7 +244,7 @@ def main():
             print(f"epoch: {epoch}, " + losses_msg + time_stats_msg)
         
         # Add a stop criteria
-        if total_loss <= 0.00000001:
+        if abs(total_loss) <= 0.00000001:
             print(f"epoch: {epoch}, loss: {total_loss:.8f}")
             print("Reached stop criterion")
             # Save the PINNs model for future use every 5000 epochs
@@ -250,9 +252,17 @@ def main():
             break
 
         if epoch%5000 == 0:
-            # Save the PINNs model for future use every 5000 epochs
-            torch.save(model.state_dict(), "/".join([path_current_folder, f"saved_model_parameters_{epoch}_epochs.pth"]))
-
+            # Save the PINNs model for future use every 5000 epochs (checkpoints)
+            torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': total_loss,
+            'losses_history': losses_history
+            }, "/".join([path_current_folder, 
+                         "saved_models", 
+                         scenraio_id_folder, 
+                         f"checkpoint_{epoch}_epochs.pth"]))
 
         
     # plot loss history
