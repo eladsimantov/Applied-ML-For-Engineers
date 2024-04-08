@@ -5,6 +5,7 @@ import torch.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
 from torch.special import bessel_j0 as J0
+from torch.special import bessel_j1 as J1
 from scipy.special import jn_zeros
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
@@ -52,7 +53,7 @@ class Membrane_PINNs(nn.Module):
 
     def compute_loss(self, r, theta, t,  Nr, Ntheta, Nt, r_f):
         """
-        This is the physics part
+        This is the physics part.
         """
         r.requires_grad=True
         theta.requires_grad=True
@@ -60,6 +61,7 @@ class Membrane_PINNs(nn.Module):
         xi = self.xi(torch.cat((r, theta, t), 1))
 
         # compute PDE derivatives using auto grad
+        # ----------------------------------------------- #
         xi_r = grad(xi, r, grad_outputs=torch.ones_like(xi), create_graph=True)[0] # we need to specify the dimension of the output array
         xi_rr = grad(xi_r, r, grad_outputs=torch.ones_like(xi_r), create_graph=True)[0]
         rxi_rr_over_r = xi_rr + xi_r / r
@@ -75,11 +77,13 @@ class Membrane_PINNs(nn.Module):
         loss_fun = nn.MSELoss()
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
-        residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
-        # residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r)
+        # ----------------------------------------------- #
+        # residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
+        residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r) # case general includes variation in theta
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
         # compute the BC loss - periodic and with a fixed boundary layer
+        # ----------------------------------------------- #
         xi_reshaped = xi.view(Nr, Ntheta, Nt) # [Nr*Ntheta*Nt, 1] -> [Nr, Ntheta, Nt]
         xi_r_reshaped = xi_r.view(Nr, Ntheta, Nt) # [Nr*Ntheta*Nt, 1] -> [Nr, Ntheta, Nt]
         xi_theta_reshaped = xi_theta.view(Nr, Ntheta, Nt)
@@ -88,21 +92,51 @@ class Membrane_PINNs(nn.Module):
         # 1. xi at theta=0 and theta=2pi are equal
         # 2. xi_theta at theta=0 and theta=2pi are equal
         # 3. xi are r=R is zero
-        # 4. xi_r at r->0 is zero
         bc_loss = loss_fun(xi_reshaped[:,0,:], xi_reshaped[:,Ntheta-1,:]) \
                 + loss_fun(xi_theta_reshaped[:,0,:], xi_theta_reshaped[:,Ntheta-1,:]) \
-                + loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:])) \
-                # + loss_fun(xi_r_reshaped[0,:,:], torch.zeros_like(xi_r_reshaped[0,:,:])) \
+                + loss_fun(xi_reshaped[Nr-1,:,:], torch.zeros_like(xi_reshaped[Nr-1,:,:]))
         
         # compute the IC loss
+        # ----------------------------------------------- #
         r_reshaped = r.view(Nr, Ntheta, Nt)
         theta_reshaped = theta.view(Nr, Ntheta, Nt)
         
-        # set an IC for the first mode of vibration
-        a_01 = jn_zeros(0, 1)[-1] # get correct alpha for first mode
-        xi_initial = 0.05 * J0(r_reshaped[:,:,0] * a_01 / r_f)
+        # IC cases:
+        # Case 1 - an IC parallel to (0,1) mode only
+        # Case 2 - an IC parallel to (1,2) mode only
+        # Case 3 - a combination of (0,1), (0,2), (0,3) modes
+        # Case 4 - a combination of all (0:1,:1:3) modes
+        
+        # choose a case
+        case = 1
+
+        # prepare bessel zeros
+        a_01, a_02, a_03 = jn_zeros(0, 3) # get alpha (zero) for the (0,1), (0,2) and (0,3) modes 
+        a_11, a_12, a_13 = jn_zeros(1, 3) # get alpha (zero) for the (1,1), (1,2) and (1,3) modes 
+
+        # get an IC for the m=0 (axisymmetric) first three modes of vibration
+        xi_initial_01 = J0(r_reshaped[:,:,0] * a_01 / r_f)
+        xi_initial_02 = J0(r_reshaped[:,:,0] * a_02 / r_f)
+        xi_initial_03 = J0(r_reshaped[:,:,0] * a_03 / r_f)
+        # # get an IC for the m=1 modes of vibration
+        xi_initial_11 = torch.cos(theta_reshaped[:,:,0]) * J1(r_reshaped[:,:,0] * a_11 / r_f)
+        xi_initial_12 = torch.cos(theta_reshaped[:,:,0]) * J1(r_reshaped[:,:,0] * a_12 / r_f)
+        xi_initial_13 = torch.cos(theta_reshaped[:,:,0]) * J1(r_reshaped[:,:,0] * a_13 / r_f)
+
+        # YOU MUST SET THIS UP PROPERLY:
+        # This is the actual initial condition as combination of modal ICs. 
+        if case == 1:
+            xi_initial = 0.05 * xi_initial_01 # Case 1 - only (0,1) modal IC
+        elif case == 2:
+            xi_initial = 0.05*xi_initial_12 # Case 2 - only (1,2) modal IC
+        elif case == 3:
+            xi_initial = 0.05(xi_initial_01 + xi_initial_02 + xi_initial_03) # Case 3 - three modal ICs of m=0
+        elif case == 4:
+            xi_initial = 0.05*(xi_initial_01 + xi_initial_02 + xi_initial_03 + 
+                               xi_initial_11 + xi_initial_12 + xi_initial_13) # Case 4 - combination of 6 modes (0:1,:1:3)
+
         ic_loss = loss_fun(xi_initial, xi_reshaped[:,:,0])
-    
+
         return pde_loss, bc_loss, ic_loss
     
 
