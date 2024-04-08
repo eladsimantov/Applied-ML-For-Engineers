@@ -251,7 +251,7 @@ def main():
             torch.save(model.state_dict(), "/".join([path_current_folder, f"saved_model_parameters_{epoch}_epochs.pth"]))
             break
 
-        if epoch%5000 == 0:
+        if epoch%5000 == 0 or epoch==num_of_epochs-1:
             # Save the PINNs model for future use every 5000 epochs (checkpoints)
             torch.save({
             'epoch': epoch,

@@ -12,16 +12,16 @@ import os
 
 def main():
     # Paths housekeeping - ENTER THE SAVED MODEL FILE TO LOAD
-    model_filename_to_test = "\saved_models\scenario_13_17_42\checkpoint_300_epochs.pth"
-    scenraio_id_folder = "\scenario_13_17_42"
+    model_filename_to_test = "\saved_models\scenario_13_42_48\checkpoint_65000_epochs.pth"
+    scenraio_id_folder = "\scenario_13_42_48"
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
     path_model_parameters = "/".join([path_current_folder, model_filename_to_test])
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
 
     # Set hyperparams
-    num_of_epochs = 100000
-    lr = 0.001
-    w_eq, w_bc, w_ic = 5, 20, 20
+    num_of_epochs = 150001
+    lr = 0.0001
+    w_eq, w_bc, w_ic = 1000, 1000, 1000
 
     # recreate the model using trained parameters from file
     model = Membrane_PINNs(HL_dim=32)

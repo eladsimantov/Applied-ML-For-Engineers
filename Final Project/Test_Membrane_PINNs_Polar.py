@@ -11,7 +11,7 @@ import os
 
 def main():
     # Paths housekeeping - ENTER THE SAVED MODEL FILE TO LOAD
-    model_filename_to_test = "\saved_models\scenario_13_17_42\checkpoint_300_epochs.pth"
+    model_filename_to_test = "\saved_models\scenario_13_42_48\checkpoint_120000_epochs.pth"
 
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
     path_model_parameters = "/".join([path_current_folder, model_filename_to_test])
@@ -27,7 +27,7 @@ def main():
     rinitial, rfinal,  = 0.01, 5
     tinitial, tfinal = 0, 20
     theta_initial, theta_final = 0, 2*np.pi
-    Nr, Ntheta, Nt = 30, 30, 30
+    Nr, Ntheta, Nt = 50, 50, 40
 
     r, theta, t = model.get_input_tensors(rinitial, rfinal, theta_initial, theta_final, tinitial, tfinal, Nr, Ntheta, Nt)
 
@@ -40,8 +40,8 @@ def main():
     animate_solution(path_to_folder=path_current_folder, n_epochs=9999,
                         xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
                         r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
-                        t_f=tfinal, t_i=tinitial, save_timesteps=True,
-                        zlims=[-0.05, 0.05])
+                        t_f=tfinal, t_i=tinitial, save_timesteps=False,
+                        zlims=[-0.15, 0.15])
 
 
 if __name__ == "__main__":
