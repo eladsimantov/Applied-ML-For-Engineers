@@ -36,7 +36,7 @@ google-auth-oauthlib==1.2.0
 google-pasta==0.2.0
 grpcio==1.60.0
 h5py==3.10.0
-idna==3.6
+idna==3.7
 ipykernel==6.25.2
 ipython==8.15.0
 isoduration==20.11.0
