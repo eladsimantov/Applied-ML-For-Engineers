@@ -28,7 +28,7 @@ executing==1.2.0
 fastjsonschema==2.19.1
 filelock==3.12.4
 flatbuffers==23.5.26
-fonttools==4.42.1
+fonttools==4.43.0
 fqdn==1.5.1
 gast==0.5.4
 google-auth==2.26.2
