@@ -232,7 +232,7 @@ def main():
     # Set hyperparams
     num_of_epochs = 50000
     lr = 0.001
-    w_eq, w_bc, w_ic = 5, 20, 20
+    w_eq, w_bc, w_ic = 1, 20, 20
 
     # create PINNs model
     model = Membrane_PINNs(HL_dim=32)
@@ -318,7 +318,7 @@ def main():
                      xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
                      r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
                      t_f=tfinal, t_i=tinitial, 
-                     zlims=[-0.15, 0.15])
+                     zlims=[-0.05, 0.05])
     
     # Save the PINNs model for future use
     torch.save(model.state_dict(), "/".join([path_current_folder, "saved_model_parameters.pth"]))
