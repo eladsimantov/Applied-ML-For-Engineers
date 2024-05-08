@@ -78,8 +78,8 @@ class Membrane_PINNs(nn.Module):
 
         # compute the PDE residual loss - only using here solution for initial condition, no external force
         # ----------------------------------------------- #
-        # residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
-        residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r) # case general includes variation in theta
+        residual = xi_tt - 1**2 * (rxi_rr_over_r) # case axissymetric
+        # residual = xi_tt - 1**2 * (xi_ttheta_over_r2 + rxi_rr_over_r) # case general includes variation in theta
         pde_loss = loss_fun(residual, torch.zeros_like(residual))
 
         # compute the BC loss - periodic and with a fixed boundary layer
@@ -108,7 +108,7 @@ class Membrane_PINNs(nn.Module):
         # Case 4 - a combination of all (0:1,:1:3) modes
         
         # choose a case
-        case = 1
+        case = 3
 
         # prepare bessel zeros
         a_01, a_02, a_03 = jn_zeros(0, 3) # get alpha (zero) for the (0,1), (0,2) and (0,3) modes 
@@ -130,7 +130,7 @@ class Membrane_PINNs(nn.Module):
         elif case == 2:
             xi_initial = 0.05*xi_initial_12 # Case 2 - only (1,2) modal IC
         elif case == 3:
-            xi_initial = 0.05(xi_initial_01 + xi_initial_02 + xi_initial_03) # Case 3 - three modal ICs of m=0
+            xi_initial = 0.05*(xi_initial_01 + xi_initial_02 + xi_initial_03) # Case 3 - three modal ICs of m=0
         elif case == 4:
             xi_initial = 0.05*(xi_initial_01 + xi_initial_02 + xi_initial_03 + 
                                xi_initial_11 + xi_initial_12 + xi_initial_13) # Case 4 - combination of 6 modes (0:1,:1:3)
@@ -230,9 +230,9 @@ def main():
     Nr, Ntheta, Nt = 30, 30, 30
     
     # Set hyperparams
-    num_of_epochs = 20000
+    num_of_epochs = 50000
     lr = 0.001
-    w_eq, w_bc, w_ic = 1, 20, 20
+    w_eq, w_bc, w_ic = 5, 20, 20
 
     # create PINNs model
     model = Membrane_PINNs(HL_dim=32)
@@ -285,7 +285,7 @@ def main():
             torch.save(model.state_dict(), "/".join([path_current_folder, f"saved_model_parameters_{epoch}_epochs.pth"]))
             break
 
-        if epoch%5000 == 0 or epoch==num_of_epochs-1:
+        if epoch%500 == 0 or epoch==num_of_epochs-1:
             # Save the PINNs model for future use every 5000 epochs (checkpoints)
             torch.save({
             'epoch': epoch,
@@ -318,7 +318,7 @@ def main():
                      xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
                      r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
                      t_f=tfinal, t_i=tinitial, 
-                     zlims=[-0.05, 0.05])
+                     zlims=[-0.15, 0.15])
     
     # Save the PINNs model for future use
     torch.save(model.state_dict(), "/".join([path_current_folder, "saved_model_parameters.pth"]))

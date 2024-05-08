@@ -11,17 +11,17 @@ import os
 
 
 def main():
-    # Paths housekeeping - ENTER THE SAVED MODEL FILE TO LOAD
-    model_filename_to_test = "\saved_models\scenario_13_42_48\checkpoint_65000_epochs.pth"
-    scenraio_id_folder = "\scenario_13_42_48"
+    # Paths housekeeping - ENTER THE SAVED MODEL FILE TO LOAD 
+    model_filename_to_test = "\saved_models\case_2\checkpoint_200000_epochs.pth"
+    scenraio_id_folder = "\case_1"
     path_current_folder = os.path.dirname(os.path.abspath(__file__))
     path_model_parameters = "/".join([path_current_folder, model_filename_to_test])
     os.makedirs("/".join([path_current_folder, "outputs"]), exist_ok=True)
 
     # Set hyperparams
-    num_of_epochs = 150001
+    num_of_epochs = 250001
     lr = 0.0001
-    w_eq, w_bc, w_ic = 1000, 1000, 1000
+    w_eq, w_bc, w_ic = 1, 20, 20
 
     # recreate the model using trained parameters from file
     model = Membrane_PINNs(HL_dim=32)
@@ -58,19 +58,22 @@ def main():
         optimizer.step()
         optimizer.zero_grad()
 
-        if epoch%5000 == 0:
+        if epoch%200 == 0:
             # Save the PINNs model for future use every 5000 epochs (checkpoints)
             torch.save({
             'epoch': epoch,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict(),
-            'loss': total_loss
+            'loss': total_loss,
+            'BC_loss': BC_loss,
+            'IC_loss': IC_loss,
+            'eq_loss': eq_loss
             }, "/".join([path_current_folder, 
                          "saved_models", 
                          scenraio_id_folder, 
                          f"checkpoint_{epoch}_epochs.pth"]))
         # skip every 20 epochs before every stat print
-        if epoch%20 == 0 and epoch >= 1:
+        if epoch%20 == 0:
             avg_time_per_epoch = (time.time() - start_time) / epoch
             stats = {"EQ_loss": float(eq_loss),
                      "BC_loss": float(BC_loss),
@@ -78,7 +81,7 @@ def main():
                      "Total_loss": float(total_loss)}
             minutes_left = round((num_of_epochs - epoch) * avg_time_per_epoch / 60)
             seconds_left = (((num_of_epochs - epoch) * avg_time_per_epoch) % 60)
-            losses_msg = ", ".join([str(key) + ": " + f"{value:.8f}" for (key, value) in stats.items()])
+            losses_msg = ", ".join([str(key) + ": " + f"{value:.12f}" for (key, value) in stats.items()])
             time_stats_msg = f", Estimated time left: {minutes_left} min {seconds_left:.0f} sec"
             print(f"epoch: {epoch}, " + losses_msg + time_stats_msg)
         
@@ -89,7 +92,7 @@ def main():
     xi_reshaped = xi_np.reshape(Nr,Ntheta,Nt) # reshape to fit dimentions
 
     # create plot for solution
-    animate_solution(path_to_folder=path_current_folder, n_epochs=9999,
+    animate_solution(path_to_folder=path_current_folder, n_epochs=222222,
                         xi=xi_reshaped, Nr=Nr, Ntheta=Ntheta, Nt=Nt, 
                         r_f=rfinal, r_i=rinitial, theta_f=theta_final, theta_i=theta_initial,
                         t_f=tfinal, t_i=tinitial, save_timesteps=True,
